@@ -18,35 +18,33 @@ const client = new Client({
 const prefix = "*";
 const TOKEN = process.env.TOKEN;
 
-/* SETTINGS */
-const BAD_WORDS = ["badword1", "badword2"]; // change these
+const BAD_WORDS = ["badword1", "badword2"]; // edit this
 const AUTO_ROLE = "Member";
 const LOG_CHANNEL = "ag-logs";
 
-/* READY */
+/* ================= READY ================= */
 client.once("ready", () => {
-  console.log("🦖 AG TREX SECURITY ACTIVE");
-  client.user.setActivity("Private Security Mode 🛡️");
+  console.log("🦖 AG TREX SECURITY MODE ACTIVE");
 });
 
-/* AUTO ROLE + JOIN LOG */
+/* ================= AUTO ROLE + LOG JOIN ================= */
 client.on("guildMemberAdd", async member => {
   const role = member.guild.roles.cache.find(r => r.name === AUTO_ROLE);
   if (role) member.roles.add(role).catch(() => {});
 
   const logChannel = member.guild.channels.cache.find(c => c.name === LOG_CHANNEL);
   if (logChannel) {
-    logChannel.send(`📥 ${member.user.tag} joined the server.`);
+    logChannel.send(`📥 ${member.user.tag} joined.`);
   }
 });
 
-/* MESSAGE SYSTEM */
+/* ================= MESSAGE SYSTEM ================= */
 client.on("messageCreate", async message => {
-  if (!message.guild || message.author.bot) return;
+  if (message.author.bot) return;
 
-  const logChannel = message.guild.channels.cache.find(c => c.name === LOG_CHANNEL);
+  const logChannel = message.guild?.channels.cache.find(c => c.name === LOG_CHANNEL);
 
-  /* ANTI LINK */
+  /* ===== ANTI LINK ===== */
   if (message.content.includes("http")) {
     if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
       message.delete().catch(() => {});
@@ -55,12 +53,12 @@ client.on("messageCreate", async message => {
     }
   }
 
-  /* ANTI BAD WORD */
+  /* ===== ANTI BAD WORD ===== */
   const lower = message.content.toLowerCase();
   if (BAD_WORDS.some(word => lower.includes(word))) {
     message.delete().catch(() => {});
-    if (logChannel) logChannel.send(`⚠ Bad language detected from ${message.author.tag}`);
-    return message.channel.send("⚠ Bad language is not allowed.");
+    if (logChannel) logChannel.send(`⚠ Bad word detected from ${message.author.tag}`);
+    return message.channel.send("⚠ Bad language not allowed.");
   }
 
   if (!message.content.startsWith(prefix)) return;
@@ -68,77 +66,13 @@ client.on("messageCreate", async message => {
   const args = message.content.slice(prefix.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
-  /* HELP */
-  if (command === "help") {
-    const embed = new EmbedBuilder()
-      .setTitle("🦖 AG TREX Security Panel")
-      .setColor("Purple")
-      .setDescription(`
-🛡 Moderation
-*clear <number>
-*kick @user
-*ban @user
-
-🎟 Tickets
-*ticket
-*close
-
-⚙ Utility
-*ping
-*help
-      `);
-
-    return message.reply({ embeds: [embed] });
-  }
-
-  /* PING */
-  if (command === "ping") {
-    return message.reply(`🏓 Pong! ${client.ws.ping}ms`);
-  }
-
-  /* CLEAR */
-  if (command === "clear") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages))
-      return message.reply("❌ No permission");
-
-    const amount = parseInt(args[0]);
-    if (!amount) return message.reply("Enter number");
-
-    await message.channel.bulkDelete(amount, true);
-    return message.channel.send(`🧹 Deleted ${amount} messages`);
-  }
-
-  /* KICK */
-  if (command === "kick") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers))
-      return message.reply("❌ No permission");
-
-    const member = message.mentions.members.first();
-    if (!member) return message.reply("Mention a user");
-
-    await member.kick();
-    return message.channel.send(`👢 ${member.user.tag} kicked`);
-  }
-
-  /* BAN */
-  if (command === "ban") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers))
-      return message.reply("❌ No permission");
-
-    const member = message.mentions.members.first();
-    if (!member) return message.reply("Mention a user");
-
-    await member.ban();
-    return message.channel.send(`🔨 ${member.user.tag} banned`);
-  }
-
-  /* CREATE TICKET */
+  /* ===== TICKET SYSTEM ===== */
   if (command === "ticket") {
-    const existing = message.guild.channels.cache.find(c =>
+    const existing = message.guild.channels.cache.find(c => 
       c.name === `ticket-${message.author.id}`
     );
 
-    if (existing) return message.reply("You already have an open ticket.");
+    if (existing) return message.reply("You already have a ticket.");
 
     const channel = await message.guild.channels.create({
       name: `ticket-${message.author.id}`,
@@ -158,12 +92,51 @@ client.on("messageCreate", async message => {
     return channel.send(`🎟 Ticket created for ${message.author}`);
   }
 
-  /* CLOSE TICKET */
   if (command === "close") {
     if (!message.channel.name.startsWith("ticket-"))
-      return message.reply("This is not a ticket channel.");
+      return message.reply("Not a ticket channel.");
 
-    return message.channel.delete();
+    message.channel.delete();
+  }
+
+  /* ===== PING ===== */
+  if (command === "ping") {
+    return message.reply("🏓 Pong!");
+  }
+
+  /* ===== HELP ===== */
+  if (command === "help") {
+    const embed = new EmbedBuilder()
+      .setTitle("🦖 AG TREX Security Panel")
+      .setColor("Purple")
+      .setDescription(`
+🛡 Moderation:
+*clear <number>
+*kick @user
+*ban @user
+
+🎟 Support:
+*ticket
+*close
+
+⚙ Utility:
+*ping
+*help
+      `);
+
+    return message.reply({ embeds: [embed] });
+  }
+
+  /* ===== CLEAR ===== */
+  if (command === "clear") {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages))
+      return message.reply("No permission");
+
+    const amount = parseInt(args[0]);
+    if (!amount) return message.reply("Enter number");
+
+    await message.channel.bulkDelete(amount, true);
+    return message.channel.send(`Deleted ${amount}`);
   }
 });
 
